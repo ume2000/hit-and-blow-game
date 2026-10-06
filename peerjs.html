@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ヒット&ブロー オンライン対戦</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>window.Peer||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"><\/script>')</script>
+<script>window.Peer||document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
+<style>
+:root{--bg:#1b1f2a;--pn:#262c3b;--in:#11151d;--tx:#f4f1ea;--mu:#aab3c5;--ac:#ff8a3d}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--tx);font-family:Arial,"Noto Sans JP",sans-serif}
+.app{max-width:430px;margin:auto;padding:20px 16px;display:flex;flex-direction:column;gap:12px;min-height:100vh}
+.pn{background:var(--pn);border-radius:14px;padding:10px}.t{font-size:13px;font-weight:700;color:var(--mu);margin-bottom:6px}
+.row{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--in);border-radius:10px;margin-bottom:6px}
+.p{display:inline-flex;width:26px;height:26px;border-radius:50%;align-items:center;justify-content:center;flex:none;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.e{background:var(--in)!important;box-shadow:inset 0 0 0 2px #3a4357}.bd{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-weight:900;font-size:13px}
+.h{background:var(--ac);color:#1b1209;margin-left:auto}.bl{background:#f4f1ea;color:#1b1f2a}
+button{font:900 16px Arial,"Noto Sans JP",sans-serif;border:0;border-radius:14px;min-height:48px;cursor:pointer;color:var(--tx);background:#3a4357;padding:0 16px}
+button.m{background:var(--ac);color:#1b1209}button:disabled{opacity:.4;cursor:default}button.c{width:48px;height:48px;min-height:48px;padding:0;border-radius:50%;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
+input,textarea{border-radius:14px;border:2px solid #3a4357;background:var(--in);color:var(--tx);width:100%;font:700 16px Arial,"Noto Sans JP",sans-serif;padding:10px 14px}
+input{height:48px;text-align:center}textarea{height:110px;font:12px monospace;word-break:break-all;resize:none}
+.n{background:#3a4357;color:#f4f1ea;font:900 15px/26px Arial,sans-serif;text-align:center}
+.ctr{text-align:center}.big{font-size:56px;font-weight:900;color:var(--ac);line-height:1.1}
+.msg{border:2px solid var(--ac);border-radius:14px;padding:10px;text-align:center;font-weight:700;font-size:14px;line-height:1.5}.msg.bad{border-color:#ef5350}
+.sm{font-size:13px;color:var(--mu);line-height:1.6}
+</style>
+</head>
+<body><main id="app" class="app"></main>
+<script>
+const COLORS=['#ef5350','#4d8dff','#3fb87f','#f7d94c','#b27cf5','#f4f1ea'],NAMES=['赤','青','緑','黄','紫','白'],L=4;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S={screen:'home',cfg:{m:'c',lim:8,lm:1,rk:1},name:'',isHost:false,peer:null,conn:null,peerOn:false,code:'',diag:'',msg:'',bad:false,busy:false,
+  first:false,secret:[],current:[],mine:[],theirs:[],turn:false,ready:false,oppReady:false,pending:null,oppSecret:null,over:null};
+const num=()=>S.cfg.m==='n',K=()=>num()?10:6;
+function tok(c,s=26){const z=`width:${s}px;height:${s}px;line-height:${s}px;font-size:${Math.round(s*.55)}px;`;
+  if(c==null)return `<i class="p e" style="${z}"></i>`;
+  return num()?`<i class="p n" style="${z}">${c}</i>`:`<i class="p" style="background:${COLORS[c]};${z}"></i>`}
+const toks=(g,s)=>Array.from({length:L},(_,i)=>tok(g[i],s)).join('');
+function score(sec,g){let h=0,b=0;g.forEach((c,i)=>{if(sec[i]===c)h++;else if(sec.includes(c))b++});return[h,b]}
+function rows(list,n){let o='';for(let i=0;i<Math.max(list.length,n);i++){const r=list[i];
+  o+=r?`<div class="row">${toks(r.g)}<span class="bd h">${r.h}</span><span class="bd bl">${r.b}</span></div>`:`<div class="row">${toks([])}</div>`}return o}
+const pal=(a,dis)=>Array.from({length:K()},(_,i)=>`<button class="c" data-${a}="${i}" style="${num()?'':'background:'+COLORS[i]}" ${dis(i)?'disabled':''}>${num()?i:''}</button>`).join('');
+const opt=(k,v,t)=>`<button data-s="${k}" data-v="${v}" class="${String(S.cfg[k])===String(v)?'m':''}" style="flex:1;font-size:14px;padding:0 6px">${t}</button>`;
+const grp=(t,o)=>`<div class="t" style="margin:8px 0 4px">${t}</div><div style="display:flex;gap:6px">${o}</div>`;
+const cfgTxt=c=>`${c.m==='n'?'数字4桁':'カラー4色'} / ${c.lim?c.lim+'手まで':'手数無制限'} / 後攻最終手${c.lm?'あり':'なし'} / ランキング${c.rk?'記録':'なし'}`;
+const banner=()=>S.msg?`<div class="msg ${S.bad?'bad':''}">${esc(S.msg)}</div>`:'';
+const say=(m,bad)=>{S.msg=m;S.bad=!!bad;render()};
+
+function render(){
+  let h='<h1 class="ctr" style="margin:0;font-size:28px">ヒット&amp;ブロー</h1>';const sc=S.screen;
+  if(sc==='home'){
+    h+=`<div class="ctr sm">${esc(S.diag)}</div>${banner()}
+    <div class="pn"><div class="t">プレイヤー名(任意)</div><input id="name" maxlength="12" value="${esc(S.name)}" placeholder="名前"></div>
+    <button class="m" id="mkHost" style="min-height:64px" ${S.busy?'disabled':''}>ルームを作る<br><small style="font-weight:500">コードを自動で発行します</small></button>
+    <div class="ctr sm">― または、友達のルームに入る ―</div>
+    <input id="cd" inputmode="numeric" maxlength="8" value="${esc(S.code)}" placeholder="友達のルームコード">
+    <button id="join" style="background:#4d8dff;color:#0b1020" ${S.busy?'disabled':''}>入室する</button>
+    <div class="pn"><div class="t">この端末のランキング</div>${renderLB()}</div>
+    <div class="ctr sm"><a href="manual.html" style="color:var(--mu)">手動接続版</a> ／ <a href="index.html" style="color:var(--mu)">通常版</a></div>`;
+  }else if(sc==='room'){
+    h+=`${banner()}<div class="pn"><div class="t">ルームコード(友達に伝える)</div><div class="big" style="font-size:44px;letter-spacing:6px;text-align:center;margin-bottom:6px">${esc(S.code)}</div><div class="ctr sm" style="margin-bottom:6px">${S.peerOn?'✅ 相手が入室しました':'相手の入室を待っています…'}</div>${S.isHost&&!S.peerOn?'<button id="shr" style="width:100%">コードを共有・コピー</button><div class="ctr sm" style="margin-top:6px">共有したらこの画面に戻ってお待ちください</div>':''}
+    ${S.isHost?grp('形式',opt('m','c','カラー')+opt('m','n','数字'))+grp('手数制限',opt('lim',6,'6手')+opt('lim',8,'8手')+opt('lim',10,'10手')+opt('lim',0,'無制限'))+
+      grp('後攻の最終手',opt('lm',1,'あり')+opt('lm',0,'なし'))+grp('ランキング',opt('rk',1,'記録')+opt('rk',0,'記録しない')):`<div>${cfgTxt(S.cfg)}</div>`}</div>
+    ${S.isHost?`<button class="m" id="start" ${S.peerOn?'':'disabled'}>この設定で開始</button>`:'<div class="ctr sm">ホストの開始を待っています…</div>'}
+    <button id="bk">ルームを出る</button>`;
+  }else if(sc==='setup'){
+    h+=`${banner()}<div class="ctr sm">${cfgTxt(S.cfg)}</div>
+    <div class="pn ctr"><div class="t">あなたの答え(重複なし)</div><div style="display:flex;justify-content:center;gap:10px">${toks(S.secret,44)}</div></div>
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">${pal('c',i=>S.secret.includes(i)||S.ready)}</div>
+    <div style="display:flex;gap:8px"><button id="clr" style="flex:1" ${S.ready?'disabled':''}>やり直す</button><button class="m" id="ok" style="flex:2" ${S.secret.length<L||S.ready?'disabled':''}>決定</button></div>
+    <div class="ctr sm">${S.ready&&!S.oppReady?'相手の準備を待っています…':''}</div>`;
+  }else{
+    const lim=S.cfg.lim,on=S.turn&&!S.over;
+    h+=`${banner()}<div class="ctr"><span style="background:${on?'var(--ac)':'#3a4357'};color:${on?'#1b1209':'var(--tx)'};border-radius:20px;padding:6px 16px;font-weight:900">${S.over?'対戦終了':S.turn?'あなたの番':'相手の番'}${lim&&!S.over?` (${S.mine.length}/${lim}手)`:''}</span></div>
+    <div style="display:flex;gap:10px"><div class="pn" style="flex:1"><div class="t">あなたの推理</div>${rows(S.mine,lim||6)}</div><div class="pn" style="flex:1"><div class="t">相手の推理</div>${rows(S.theirs,lim||6)}</div></div>`;
+    if(S.over)h+=`<div class="pn ctr"><div class="big">${{win:'WIN',lose:'LOSE',draw:'DRAW'}[S.over]}</div><div class="t" style="margin-top:8px">相手の答え</div><div style="display:flex;justify-content:center;gap:8px">${S.oppSecret?toks(S.oppSecret,36):'…'}</div></div><button class="m" id="again">もう一回</button>`;
+    else h+=`<div class="pn"><div style="display:flex;justify-content:center;gap:10px;margin-bottom:10px">${toks(S.current,40)}</div>
+      <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">${pal('g',i=>S.current.includes(i)||!S.turn)}</div>
+      <div style="display:flex;gap:8px"><button id="del" style="flex:1" ${S.turn?'':'disabled'}>消す</button><button class="m" id="sub" style="flex:2" ${S.turn&&S.current.length===L?'':'disabled'}>この組み合わせで推理</button></div></div>`;
+  }
+  $('app').innerHTML=h;bind();
+}
+function renderLB(){const lb=JSON.parse(localStorage.getItem('hb-rank')||'[]');
+  return lb.length?lb.slice(0,10).map((r,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 2px"><span>${i+1}. ${esc(r.n)}</span><span>${r.w}勝 ${r.l}敗 ${r.d}分</span></div>`).join(''):'<div class="sm">まだ記録がありません</div>'}
+function record(r){if(!S.cfg.rk)return;const key=(S.name||'名無し').trim()||'名無し';let lb=JSON.parse(localStorage.getItem('hb-rank')||'[]');
+  let x=lb.find(a=>a.n===key);if(!x){x={n:key,w:0,l:0,d:0};lb.push(x)}x[r==='win'?'w':r==='lose'?'l':'d']++;
+  lb.sort((a,b)=>b.w-a.w||a.l-b.l);localStorage.setItem('hb-rank',JSON.stringify(lb.slice(0,50)))}
+
+function errText(e){const t=e?.type||'';
+  if(t==='nolib')return '通信ライブラリ(PeerJS)を読み込めませんでした。ネット接続や広告ブロックを確認してください';
+  if(t==='timeout')return '接続サーバーから応答がありません。時間をおいて再試行してください';
+  if(['network','server-error','socket-error','socket-closed'].includes(t))return '接続サーバー(PeerJS)に接続できません ['+t+']。繋がらない時は手動接続版をお使いください';
+  return '接続エラー ['+(t||'error')+'] '+(e?.message||'')}
+function openPeer(id){return new Promise((res,rej)=>{
+  if(typeof Peer==='undefined'){rej({type:'nolib'});return}
+  let p;try{p=id?new Peer(id):new Peer()}catch(e){rej({type:'init',message:String(e&&e.message||e)});return}
+  let settled=false;
+  const to=setTimeout(()=>{if(settled)return;settled=true;try{p.destroy()}catch(_){}rej({type:'timeout'})},15000);
+  p.on('open',()=>{if(settled)return;settled=true;clearTimeout(to);res(p)});
+  p.on('error',e=>{if(settled)return;settled=true;clearTimeout(to);try{p.destroy()}catch(_){}rej(e)})})}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let wl=null;async function keepAwake(){try{wl=await navigator.wakeLock?.request('screen')}catch(_){} }
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;
+  if(S.peer&&S.peer.disconnected&&!S.peer.destroyed){try{S.peer.reconnect()}catch(_){}}if(S.screen!=='home')keepAwake()});
+function leave(){try{S.conn?.close()}catch(_){}try{S.peer?.destroy()}catch(_){}S.peer=S.conn=null;S.peerOn=false}
+const send=m=>{if(S.conn?.open)S.conn.send(m)};
+function attach(c){S.conn=c;c.on('data',onData);
+  c.on('close',()=>{if(S.conn!==c)return;
+    if(S.isHost&&S.screen==='room'){S.conn=null;S.peerOn=false;say('相手が退出しました')}
+    else if(S.screen!=='home'){leave();S.screen='home';say('相手との接続が切れました',1)}})}
+async function probe(code){ let q;try{q=await openPeer()}catch(e){return true}
+  return new Promise(res=>{let d=false;const f=ok=>{if(d)return;d=true;clearTimeout(t);try{q.destroy()}catch(_){}res(ok)};
+    const t=setTimeout(()=>f(false),8000);
+    const c=q.connect('hb-'+code,{metadata:{probe:1},serialization:'json'});
+    q.on('error',()=>f(false));c.on('error',()=>f(false));c.on('open',()=>f(true))})}
+async function hostCreate(){
+  S.name=($('name')?.value||S.name).trim()||'名無し';S.busy=true;S.msg='ルームを作成中…';S.bad=false;render();leave();
+  for(let i=0;i<6;i++){const code=String(Math.floor(100000+Math.random()*900000));let p;
+    try{p=await openPeer('hb-'+code)}catch(e){if(e?.type==='unavailable-id')continue;S.busy=false;say('ルームを作成できません: '+errText(e),1);return}
+    S.peer=p;S.isHost=true;S.code=code;
+    p.on('connection',c=>{
+      if(c.metadata&&c.metadata.probe){c.on('open',()=>setTimeout(()=>{try{c.close()}catch(_){}},200));return}
+      if(S.conn?.open){c.on('open',()=>{c.send({type:'full'});setTimeout(()=>c.close(),300)});return}
+      c.on('open',()=>{attach(c);S.peerOn=true;S.msg='';send({type:'cfg',cfg:S.cfg});render()})});
+    p.on('error',e=>{if(e.type!=='peer-unavailable')say(errText(e),1)});
+    p.on('disconnected',()=>{try{p.reconnect()}catch(_){} });
+    S.msg='ルームを確認中…';render();
+    if(await probe(code)){S.busy=false;S.msg='';S.screen='room';keepAwake();render();return}
+    try{p.destroy()}catch(_){}S.peer=null}
+  S.busy=false;say('ルームを登録できませんでした(接続サーバーが不安定な可能性があります)。もう一度お試しいただくか、手動接続版をお使いください',1)}
+function joinOnce(code){return new Promise(async(res,rej)=>{
+  let p;try{p=await openPeer()}catch(e){rej(e);return}
+  const c=p.connect('hb-'+code,{reliable:true,serialization:'json'});let d=false;
+  const f=e=>{if(d)return;d=true;clearTimeout(t);try{p.destroy()}catch(_){}rej(e)};
+  const t=setTimeout(()=>f({type:'peer-unavailable'}),12000);
+  p.on('error',f);c.on('error',()=>f({type:'conn'}));
+  c.on('open',()=>{if(d)return;d=true;clearTimeout(t);S.peer=p;res(c)})})}
+async function guestJoin(){
+  S.name=($('name')?.value||S.name).trim()||'名無し';S.code=($('cd')?.value||S.code).trim();
+  if(!S.code){say('ルームコードを入力してください',1);return}
+  S.busy=true;S.bad=false;leave();
+  for(let i=0;i<5;i++){
+    say('ルームを探しています…('+(i+1)+'/5)');S.bad=false;
+    try{const c=await joinOnce(S.code);S.isHost=false;attach(c);S.busy=false;S.peerOn=true;S.msg='';S.screen='room';keepAwake();render();return}
+    catch(e){if(e?.type!=='peer-unavailable'&&e?.type!=='conn'){S.busy=false;say(errText(e),1);return}await sleep(800)}}
+  S.busy=false;say('ルームが見つかりません。コードを確認してください(ホストが画面を開いたままか確認してください)',1)}
+
+function resetGame(){Object.assign(S,{secret:[],current:[],mine:[],theirs:[],turn:false,ready:false,oppReady:false,pending:null,oppSecret:null,over:null})}
+function begin(){S.first=S.isHost;resetGame();S.msg='';S.screen='setup';render()}
+function onData(d){
+  if(d.type==='cfg'){S.cfg=d.cfg;render()}
+  else if(d.type==='go'){S.cfg=d.cfg;begin()}
+  else if(d.type==='ready'){S.oppReady=true;tryStart()}
+  else if(d.type==='guess'){const[h,b]=score(S.secret,d.g);S.theirs.push({g:d.g,h,b});send({type:'result',h,b});settle();render()}
+  else if(d.type==='result'){S.mine.push({g:S.pending,h:d.h,b:d.b});settle();render()}
+  else if(d.type==='reveal'){S.oppSecret=d.s;render()}
+  else if(d.type==='again'){resetGame();S.screen='setup';render()}
+  else if(d.type==='full'){leave();S.screen='home';say('このルームは満員です',1)}}
+function tryStart(){if(S.ready&&S.oppReady&&S.secret.length===L){S.screen='battle';S.turn=S.first;render()}}
+function settle(){
+  const f=S.first?S.mine.length:S.theirs.length,s=S.first?S.theirs.length:S.mine.length;
+  const mc=S.mine.some(r=>r.h===L),oc=S.theirs.some(r=>r.h===L);let r=null;
+  if((mc||oc)&&(!S.cfg.lm||s>=f))r=mc&&oc?'draw':mc?'win':'lose';
+  else if(S.cfg.lim&&f>=S.cfg.lim&&s>=S.cfg.lim)r='draw';
+  if(r){S.over=r;S.turn=false;send({type:'reveal',s:S.secret});record(r)}
+  else S.turn=S.first?f===s:f>s}
+
+function bind(){
+  const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn};
+  on('shr',async()=>{const t='ヒット&ブローのルームコード: '+S.code+'\n'+location.href.split('#')[0];
+    try{if(navigator.share)await navigator.share({text:t});else{await navigator.clipboard.writeText(t);say('コピーしました')}}catch(e){}});
+  on('mkHost',hostCreate);on('join',guestJoin);
+  on('bk',()=>{leave();S.screen='home';S.msg='';S.busy=false;render()});
+  on('start',()=>{const d={type:'go',cfg:{...S.cfg}};send(d);begin()});
+  on('clr',()=>{S.secret=[];render()});on('ok',()=>{S.ready=true;send({type:'ready'});tryStart();render()});
+  on('del',()=>{S.current.pop();render()});
+  on('sub',()=>{S.pending=S.current.slice();S.current=[];S.turn=false;send({type:'guess',g:S.pending});render()});
+  on('again',()=>{resetGame();S.screen='setup';send({type:'again'});render()});
+  const nm=$('name');if(nm)nm.oninput=()=>S.name=nm.value;
+  const cd=$('cd');if(cd)cd.oninput=()=>S.code=cd.value.trim();
+  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const k=b.dataset.s;S.cfg[k]=k==='m'?b.dataset.v:+b.dataset.v;send({type:'cfg',cfg:S.cfg});render()});
+  document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{if(S.secret.length<L){S.secret.push(+b.dataset.c);render()}});
+  document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{if(S.current.length<L){S.current.push(+b.dataset.g);render()}});
+}
+render();
+</script></body></html>
+
