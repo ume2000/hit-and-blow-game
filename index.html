@@ -27,8 +27,8 @@ input{height:48px;text-align:center}textarea{height:110px;font:12px monospace;wo
 <script>
 const COLORS=['#ef5350','#4d8dff','#3fb87f','#f7d94c','#b27cf5','#f4f1ea'],NAMES=['赤','青','緑','黄','紫','白'],L=4;
 const $=id=>document.getElementById(id);
-const esc=s=>String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const S={screen:'home',cfg:{m:'c',lim:8,lm:1,rk:1},name:'',isHost:false,peer:null,conn:null,peerOn:false,code:'',diag:'',msg:'',bad:false,busy:false,
+const esc=s=>String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); 
+const S={screen:'home',cfg:{m:'c',lim:8,lm:1,rk:1},name:'',isHost:false,peer:null,conn:null,peerOn:false,code:'',msg:'',bad:false,busy:false,
   first:false,secret:[],current:[],mine:[],theirs:[],turn:false,ready:false,oppReady:false,pending:null,oppSecret:null,over:null};
 const num=()=>S.cfg.m==='n',K=()=>num()?10:6;
 function tok(c,s=26){const z=`width:${s}px;height:${s}px;line-height:${s}px;font-size:${Math.round(s*.55)}px;`;
@@ -48,254 +48,101 @@ const say=(m,bad)=>{S.msg=m;S.bad=!!bad;render()};
 function render(){
   let h='<h1 class="ctr" style="margin:0;font-size:28px">ヒット&amp;ブロー</h1>';const sc=S.screen;
   if(sc==='home'){
-    h+=`<div class="ctr sm">${esc(S.diag)}</div>${banner()}
+    h+=`${banner()}
     <div class="pn"><div class="t">プレイヤー名(任意)</div><input id="name" maxlength="12" value="${esc(S.name)}" placeholder="名前"></div>
-    <button class="m" id="mkHost" style="min-height:64px" ${S.busy?'disabled':''}>ルームを作る<br><small style="font-weight:500">コードを自動で発行します</small></button>
-    <div class="ctr sm">― または、友達のルームに入る ―</div>
-    <input id="cd" inputmode="numeric" maxlength="8" value="${esc(S.code)}" placeholder="友達のルームコード">
-    <button id="join" style="background:#4d8dff;color:#0b1020" ${S.busy?'disabled':''}>入室する</button>
-    <div class="pn"><div class="t">この端末のランキング</div>${renderLB()}</div>
-    <div class="ctr sm"><a href="manual.html" style="color:var(--mu)">手動接続版</a> ／ <a href="peerjs.html" style="color:var(--mu)">PeerJS版</a></div>`;
+    <button class="m" id="mkHost" style="min-height:64px" ${S.busy?'disabled':''}>ルームを作る<br><small style="font-weight:500">コードが表示されます</small></button>
+    <div class="ctr sm">― または、コードで入る ―</div>
+    <input id="cd" inputmode="numeric" maxlength="8" value="${esc(S.code)}" placeholder="ルームコード">
+    <button id="join" style="background:#4d8dff;color:#0b1020" ${S.busy?'disabled':''}>入室</button>
+    <div class="pn"><div class="t">ランキング</div>${renderLB()}</div>
+    <div class="ctr sm"><a href="manual.html" style="color:var(--mu)">手動版</a> / <a href="peerjs.html" style="color:var(--mu)">PeerJS版</a></div>`;
   }else if(sc==='room'){
-    h+=`${banner()}<div class="pn"><div class="t">ルームコード(友達に伝える)</div><div class="big" style="font-size:44px;letter-spacing:6px;text-align:center;margin-bottom:6px">${esc(S.code)}</div><div class="ctr sm" style="margin-bottom:6px">${S.peerOn?'✅ 相手が入室しました':'相手の入室を待っています…'}</div>${S.isHost&&!S.peerOn?'<button id="shr" style="width:100%">コードを共有・コピー</button><div class="ctr sm" style="margin-top:6px">共有したらこの画面に戻ってお待ちください</div>':''}
-    ${S.isHost?grp('形式',opt('m','c','カラー')+opt('m','n','数字'))+grp('手数制限',opt('lim',6,'6手')+opt('lim',8,'8手')+opt('lim',10,'10手')+opt('lim',0,'無制限'))+
-      grp('後攻の最終手',opt('lm',1,'あり')+opt('lm',0,'なし'))+grp('ランキング',opt('rk',1,'記録')+opt('rk',0,'記録しない')):`<div>${cfgTxt(S.cfg)}</div>`}</div>
-    ${S.isHost?`<button class="m" id="start" ${S.peerOn?'':'disabled'}>この設定で開始</button>`:'<div class="ctr sm">ホストの開始を待っています…</div>'}
-    <button id="bk">ルームを出る</button>`;
+    h+=`${banner()}<div class="pn"><div class="t">ルームコード</div><div class="big" style="font-size:44px;letter-spacing:6px;text-align:center;margin-bottom:6px">${esc(S.code)}</div><div class="ctr sm" style="margin-bottom:6px">${S.peerOn?'✅ 相手が入室しました':'⏳ 相手の入室を待っています...'}</div>
+    ${S.isHost?grp('形式',opt('m','c','カラー')+opt('m','n','数字'))+grp('手数',opt('lim',6,'6手')+opt('lim',8,'8手')+opt('lim',10,'10手')+opt('lim',0,'無制限'))+grp('後攻最終手',opt('lm',1,'あり')+opt('lm',0,'なし'))+grp('ランキング',opt('rk',1,'記録')+opt('rk',0,'なし')):`<div>${cfgTxt(S.cfg)}</div>`}</div>
+    ${S.isHost?`<button class="m" id="start" ${S.peerOn?'':'disabled'}>開始</button>`:'<div class="ctr sm">ホストの開始を待機中...</div>'}
+    <button id="bk">戻る</button>`;
   }else if(sc==='setup'){
     h+=`${banner()}<div class="ctr sm">${cfgTxt(S.cfg)}</div>
     <div class="pn ctr"><div class="t">あなたの答え(重複なし)</div><div style="display:flex;justify-content:center;gap:10px">${toks(S.secret,44)}</div></div>
     <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">${pal('c',i=>S.secret.includes(i)||S.ready)}</div>
     <div style="display:flex;gap:8px"><button id="clr" style="flex:1" ${S.ready?'disabled':''}>やり直す</button><button class="m" id="ok" style="flex:2" ${S.secret.length<L||S.ready?'disabled':''}>決定</button></div>
-    <div class="ctr sm">${S.ready&&!S.oppReady?'相手の準備を待っています…':''}</div>`;
+    <div class="ctr sm">${S.ready&&!S.oppReady?'相手の準備を待機中...':''}</div>`;
   }else{
     const lim=S.cfg.lim,on=S.turn&&!S.over;
-    h+=`${banner()}<div class="ctr"><span style="background:${on?'var(--ac)':'#3a4357'};color:${on?'#1b1209':'var(--tx)'};border-radius:20px;padding:6px 16px;font-weight:900">${S.over?'対戦終了':S.turn?'あなたの番':'相手の番'}${lim&&!S.over?` (${S.mine.length}/${lim}手)`:''}</span></div>
+    h+=`${banner()}<div class="ctr"><span style="background:${on?'var(--ac)':'#3a4357'};color:${on?'#1b1209':'var(--tx)'};border-radius:20px;padding:6px 16px;font-weight:900">${S.over?'終了':S.turn?'あなたの番':'相手の番'}${lim&&!S.over?` (${S.mine.length}/${lim}手)`:''}</span></div>
     <div style="display:flex;gap:10px"><div class="pn" style="flex:1"><div class="t">あなたの推理</div>${rows(S.mine,lim||6)}</div><div class="pn" style="flex:1"><div class="t">相手の推理</div>${rows(S.theirs,lim||6)}</div></div>`;
     if(S.over)h+=`<div class="pn ctr"><div class="big">${{win:'WIN',lose:'LOSE',draw:'DRAW'}[S.over]}</div><div class="t" style="margin-top:8px">相手の答え</div><div style="display:flex;justify-content:center;gap:8px">${S.oppSecret?toks(S.oppSecret,36):'…'}</div></div><button class="m" id="again">もう一回</button>`;
-    else h+=`<div class="pn"><div style="display:flex;justify-content:center;gap:10px;margin-bottom:10px">${toks(S.current,40)}</div>
-      <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">${pal('g',i=>S.current.includes(i)||!S.turn)}</div>
-      <div style="display:flex;gap:8px"><button id="del" style="flex:1" ${S.turn?'':'disabled'}>消す</button><button class="m" id="sub" style="flex:2" ${S.turn&&S.current.length===L?'':'disabled'}>この組み合わせで推理</button></div></div>`;
+    else h+=`<div class="pn"><div style="display:flex;justify-content:center;gap:10px;margin-bottom:10px">${toks(S.current,40)}</div><div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">${pal('g',i=>S.current.includes(i)||!S.turn)}</div><div style="display:flex;gap:8px"><button id="del" style="flex:1" ${S.turn?'':'disabled'}>消す</button><button class="m" id="sub" style="flex:2" ${S.turn&&S.current.length===L?'':'disabled'}>推理</button></div></div>`;
   }
   $('app').innerHTML=h;bind();
 }
 function renderLB(){const lb=JSON.parse(localStorage.getItem('hb-rank')||'[]');
-  return lb.length?lb.slice(0,10).map((r,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 2px"><span>${i+1}. ${esc(r.n)}</span><span>${r.w}勝 ${r.l}敗 ${r.d}分</span></div>`).join(''):'<div class="sm">まだ記録がありません</div>'}
+  return lb.length?lb.slice(0,10).map((r,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 2px"><span>${i+1}. ${esc(r.n)}</span><span>${r.w}勝${r.l}敗${r.d}分</span></div>`).join(''):'<div class="sm">記録なし</div>'}
 function record(r){if(!S.cfg.rk)return;const key=(S.name||'名無し').trim()||'名無し';let lb=JSON.parse(localStorage.getItem('hb-rank')||'[]');
-  let x=lb.find(a=>a.n===key);if(!x){x={n:key,w:0,l:0,d:0};lb.push(x)}x[r==='win'?'w':r==='lose'?'l':'d']++;
-  lb.sort((a,b)=>b.w-a.w||a.l-b.l);localStorage.setItem('hb-rank',JSON.stringify(lb.slice(0,50)))}
+  let x=lb.find(a=>a.n===key);if(!x){x={n:key,w:0,l:0,d:0};lb.push(x)}x[r==='win'?'w':r==='lose'?'l':'d']++;lb.sort((a,b)=>b.w-a.w||a.l-b.l);localStorage.setItem('hb-rank',JSON.stringify(lb.slice(0,50)))}
 
 const b64=u=>btoa(String.fromCharCode(...u)),ub64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
-async function enc(d){const j=JSON.stringify({t:d.type,s:d.sdp});
-  try{const z=new Blob([j]).stream().pipeThrough(new CompressionStream('deflate-raw'));return 'z'+b64(new Uint8Array(await new Response(z).arrayBuffer()))}
-  catch(e){return 'p'+b64(new TextEncoder().encode(j))}}
-async function dec(t){t=t.replace(/\s+/g,'');const raw=ub64(t.slice(1));let j;
-  if(t[0]==='z')j=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
-  else j=new TextDecoder().decode(raw);const o=JSON.parse(j);return{type:o.t,sdp:o.s}}
-const gathered=pc=>new Promise(r=>{if(pc.iceGatheringState==='complete')return r();const t=setTimeout(r,5000);
-  pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);r()}})});
-
-const NT='https://ntfy.sh/';
-let signalSource=null, pc=null, dc=null, roomTopic=null, lastOfferId=null;
-
-function parseSignal(raw){
+async function enc(d){const j=JSON.stringify({t:d.type,s:d.sdp});try{const z=new Blob([j]).stream().pipeThrough(new CompressionStream('deflate-raw'));return 'z'+b64(new Uint8Array(await new Response(z).arrayBuffer()))}catch(e){return 'p'+b64(new TextEncoder().encode(j))}}
+async function dec(t){t=t.replace(/\s+/g,'');const raw=ub64(t.slice(1));let j;if(t[0]==='z')j=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();else j=new TextDecoder().decode(raw);return JSON.parse(j)}
+const gathered=pc=>new Promise(r=>{if(pc.iceGatheringState==='complete')return r();const t=setTimeout(r,5000);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);r()}})});
+const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'},{urls:'stun:stun3.l.google.com:19302'},{urls:'stun:stun4.l.google.com:19302'},{urls:'stun:stun.stunprotocol.org:3478'},{urls:'stun:stun1.stunprotocol.org:3478'},{urls:['turn:numb.viagenie.ca'],username:'webrtc@live.com',credential:'muazkh'}];
+let pc=null,dc=null,esrc=null,roomId='',lastId='';
+function close0(){try{dc?.close()}catch(_){}try{pc?.close()}catch(_){}try{esrc?.close()}catch(_){}pc=dc=esrc=null;S.peerOn=false}
+function wire(ch){dc=ch;ch.onopen=()=>{S.msg='';S.screen='room';S.peerOn=true;render()};ch.onmessage=e=>onData(JSON.parse(e.data));ch.onclose=()=>{if(S.screen!=='home'){close0();S.screen='home';say('接続が切れました',1)}}}
+async function hostCreate(){S.name=($('name')?.value||S.name).trim()||'名無し';S.busy=true;S.msg='作成中...';S.bad=false;render();close0();
+  const code=String(Math.floor(100000+Math.random()*900000));roomId='hb-'+code;S.code=code;S.isHost=true;
   try{
-    const outer = JSON.parse(raw);
-    const payload = typeof outer.message === 'string' ? JSON.parse(outer.message) : (outer.message || outer);
-    return payload && typeof payload === 'object' ? payload : null;
-  }catch(_){ return null; }
+    esrc=new EventSource('https://ntfy.sh/'+roomId+'/sse');let todo=null;
+    esrc.onmessage=async ev=>{try{const msg=JSON.parse(JSON.parse(ev.data).message);if(msg.t==='offer'&&msg.id!==lastId){lastId=msg.id;if(pc)try{pc.close()}catch(_){};
+      pc=new RTCPeerConnection({iceServers:ICE});pc.ondatachannel=e=>wire(e.channel);await pc.setRemoteDescription(await dec(msg.sdp));await pc.setLocalDescription(await pc.createAnswer());await gathered(pc);
+      fetch('https://ntfy.sh/'+roomId,{method:'POST',body:JSON.stringify({t:'answer',id:msg.id,sdp:await enc(pc.localDescription)})})
+    }}catch(_){}};esrc.onerror=()=>{};
+    S.busy=false;S.msg='';S.screen='room';render();
+  }catch(e){close0();S.busy=false;say('作成失敗',1)}
 }
-
-function postSignal(payload){
-  return fetch(`${NT}${roomTopic}`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  }).then(res=>{
-    if(!res.ok) throw {type:'post', message:res.statusText || `HTTP ${res.status}`};
-  });
-}
-
-function listenRoom(topic, onmsg){
-  const es = new EventSource(`${NT}${topic}/sse`);
-  es.onmessage = ev => {
-    const msg = parseSignal(ev.data);
-    if(msg) onmsg(msg);
-  };
-  es.onerror = () => {};
-  return es;
-}
-
-function closeAll(){
-  try{dc&&dc.close()}catch(_){}; try{pc&&pc.close()}catch(_){}; try{signalSource&&signalSource.close()}catch(_){};
-  dc=null; pc=null; signalSource=null; lastOfferId=null; S.peerOn=false;
-}
-
-function wireChannel(ch){
-  dc=ch;
-  ch.onopen = ()=>{ S.msg=''; S.screen='room'; S.peerOn=true; keepAwake(); render(); };
-  ch.onmessage = e=>onData(JSON.parse(e.data));
-  ch.onclose = ()=>{ if(S.screen!=='home'){ closeAll(); S.screen='home'; say('相手との接続が切れました',1); } };
-}
-
-async function hostCreate(){
-  S.name=($('name')?.value||S.name).trim()||'名無し';
-  S.busy=true; S.msg='ルームを作成中…'; S.bad=false; render();
-  closeAll();
-
-  const code=String(Math.floor(100000+Math.random()*900000));
-  roomTopic='hb-'+code;
-  S.code=code; S.isHost=true;
-
+async function guestJoin(){S.name=($('name')?.value||S.name).trim()||'名無し';S.code=($('cd')?.value||S.code).trim();if(!S.code){say('コード入力',1);return}
+  S.busy=true;S.bad=false;close0();roomId='hb-'+S.code;
   try{
-    signalSource = listenRoom(roomTopic, async (msg)=>{
-      if(!msg || msg.t !== 'offer' || !msg.id) return;
-      if(msg.id === lastOfferId) return;
-      lastOfferId = msg.id;
-
-      pc = new RTCPeerConnection({
-        iceServers:[
-          {urls:'stun:stun.l.google.com:19302'},
-          {urls:'stun:stun1.l.google.com:19302'},
-          {urls:'stun:stun.cloudflare.com:3478'},
-          {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}
-        ]
-      });
-
-      pc.ondatachannel = e=>{ wireChannel(e.channel); };
-
-      await pc.setRemoteDescription(await dec(msg.sdp));
-      await pc.setLocalDescription(await pc.createAnswer());
-      await gathered(pc);
-      await postSignal({t:'answer', id:msg.id, sdp:await enc(pc.localDescription)});
-    });
-
-    S.busy=false; S.msg=''; S.screen='room'; keepAwake(); render();
-  }catch(e){
-    closeAll();
-    S.busy=false; say('ルームを作成できません: '+(e?.message||String(e)),1);
-  }
-}
-
-async function guestJoin(){
-  S.name=($('name')?.value||S.name).trim()||'名無し';
-  S.code=($('cd')?.value||S.code).trim();
-  if(!S.code){ say('ルームコードを入力してください',1); return; }
-
-  S.busy=true; S.bad=false; closeAll();
-  roomTopic='hb-'+S.code;
-
-  try{
-    signalSource = listenRoom(roomTopic, async (msg)=>{
-      if(!msg || msg.t !== 'answer' || !msg.id) return;
-      if(msg.id !== lastOfferId) return;
-      if(!pc) return;
-      try{ await pc.setRemoteDescription(await dec(msg.sdp)); }
-      catch(_){ }
-    });
-
+    esrc=new EventSource('https://ntfy.sh/'+roomId+'/sse');let ans=null,timer=null;
+    esrc.onmessage=ev=>{try{const msg=JSON.parse(JSON.parse(ev.data).message);if(msg.t==='answer'&&msg.id===lastId){ans=msg;clearTimeout(timer)}}catch(_){}}
+    esrc.onerror=()=>{};
     for(let i=0;i<3;i++){
-      say('ルームを探しています…('+(i+1)+'/3)');
-      lastOfferId = 'offer-' + Math.random().toString(36).slice(2) + '-' + Date.now();
-      pc = new RTCPeerConnection({
-        iceServers:[
-          {urls:'stun:stun.l.google.com:19302'},
-          {urls:'stun:stun1.l.google.com:19302'},
-          {urls:'stun:stun.cloudflare.com:3478'},
-          {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}
-        ]
-      });
-
-      dc = pc.createDataChannel('g');
-      wireChannel(dc);
-
-      await pc.setLocalDescription(await pc.createOffer());
-      await gathered(pc);
-      await postSignal({t:'offer', id:lastOfferId, sdp:await enc(pc.localDescription)});
-
-      let ok=false;
-      for(let k=0;k<80 && !ok; k++){
-        await sleep(200);
-        if(dc && dc.readyState === 'open'){ ok=true; break; }
-      }
-
-      if(ok){
-        S.isHost=false; S.busy=false; S.msg=''; S.screen='room'; keepAwake(); render(); return;
-      }
-
-      try{dc.close()}catch(_){}; dc=null; try{pc.close()}catch(_){}; pc=null;
+      say('探索 '+(i+1)+'/3');lastId='offer-'+Math.random().toString(36).slice(2)+'-'+Date.now();ans=null;
+      if(pc)try{pc.close()}catch(_){};
+      pc=new RTCPeerConnection({iceServers:ICE});dc=pc.createDataChannel('g');wire(dc);await pc.setLocalDescription(await pc.createOffer());await gathered(pc);
+      fetch('https://ntfy.sh/'+roomId,{method:'POST',body:JSON.stringify({t:'offer',id:lastId,sdp:await enc(pc.localDescription)})});
+      await new Promise(r=>timer=setTimeout(r,5000));
+      if(ans){await pc.setRemoteDescription(await dec(ans.sdp));S.isHost=false;S.busy=false;S.msg='';S.screen='room';S.peerOn=true;render();return}
+      try{dc.close()}catch(_){}try{pc.close()}catch(_){};
     }
-
-    throw {type:'notfound'};
-  }catch(e){
-    closeAll();
-    S.busy=false;
-    say(e.type==='notfound' ? 'ルームが見つかりません。コードを確認し、ホストが画面を開いたままか確認してください' : (e?.message||String(e)),1);
-  }
+    throw 0;
+  }catch(e){close0();S.busy=false;say('見つかりません',1)}
 }
-
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-let wl=null; async function keepAwake(){ try{ wl=await navigator.wakeLock?.request('screen'); }catch(_){} }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&S.screen!=='home') keepAwake(); });
-
 function resetGame(){Object.assign(S,{secret:[],current:[],mine:[],theirs:[],turn:false,ready:false,oppReady:false,pending:null,oppSecret:null,over:null})}
 function begin(){S.first=S.isHost;resetGame();S.msg='';S.screen='setup';render()}
 function onData(d){
-  if(d.type==='cfg'){S.cfg=d.cfg;render()}
-  else if(d.type==='go'){S.cfg=d.cfg;begin()}
-  else if(d.type==='ready'){S.oppReady=true;tryStart()}
+  if(d.type==='cfg'){S.cfg=d.cfg;render()}else if(d.type==='go'){S.cfg=d.cfg;begin()}else if(d.type==='ready'){S.oppReady=true;tryStart()}
   else if(d.type==='guess'){const[h,b]=score(S.secret,d.g);S.theirs.push({g:d.g,h,b});send({type:'result',h,b});settle();render()}
-  else if(d.type==='result'){S.mine.push({g:S.pending,h:d.h,b:d.b});settle();render()}
-  else if(d.type==='reveal'){S.oppSecret=d.s;render()}
-  else if(d.type==='again'){resetGame();S.screen='setup';render()}
-  else if(d.type==='full'){closeAll();S.screen='home';say('このルームは満員です',1)}
+  else if(d.type==='result'){S.mine.push({g:S.pending,h:d.h,b:d.b});settle();render()}else if(d.type==='reveal'){S.oppSecret=d.s;render()}else if(d.type==='again'){resetGame();S.screen='setup';render()}
 }
 function tryStart(){if(S.ready&&S.oppReady&&S.secret.length===L){S.screen='battle';S.turn=S.first;render()}}
 function settle(){
-  const f=S.first?S.mine.length:S.theirs.length,s=S.first?S.theirs.length:S.mine.length;
-  const mc=S.mine.some(r=>r.h===L),oc=S.theirs.some(r=>r.h===L);let r=null;
-  if((mc||oc)&&(!S.cfg.lm||s>=f))r=mc&&oc?'draw':mc?'win':'lose';
-  else if(S.cfg.lim&&f>=S.cfg.lim&&s>=S.cfg.lim)r='draw';
-  if(r){S.over=r;S.turn=false;send({type:'reveal',s:S.secret});record(r)}
-  else S.turn=S.first?f===s:f>s
+  const f=S.first?S.mine.length:S.theirs.length,s=S.first?S.theirs.length:S.mine.length;const mc=S.mine.some(r=>r.h===L),oc=S.theirs.some(r=>r.h===L);let r=null;
+  if((mc||oc)&&(!S.cfg.lm||s>=f))r=mc&&oc?'draw':mc?'win':'lose';else if(S.cfg.lim&&f>=S.cfg.lim&&s>=S.cfg.lim)r='draw';
+  if(r){S.over=r;S.turn=false;send({type:'reveal',s:S.secret});record(r)}else S.turn=S.first?f===s:f>s
 }
-
+const send=m=>{if(dc?.readyState==='open')dc.send(JSON.stringify(m))};
 function bind(){
   const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn};
-  on('shr',async()=>{const t='ヒット&ブローのルームコード: '+S.code+'\n'+location.href.split('#')[0];
-    try{if(navigator.share)await navigator.share({text:t});else{await navigator.clipboard.writeText(t);say('コピーしました')}}catch(e){}});
-  on('mkHost',hostCreate);on('join',guestJoin);
-  on('bk',()=>{closeAll();S.screen='home';S.msg='';S.busy=false;render()});
-  on('start',()=>{const d={type:'go',cfg:{...S.cfg}};send(d);begin()});
+  on('mkHost',hostCreate);on('join',guestJoin);on('bk',()=>{close0();S.screen='home';S.msg='';S.busy=false;render()});
+  on('start',()=>{send({type:'go',cfg:{...S.cfg}});begin()});
   on('clr',()=>{S.secret=[];render()});on('ok',()=>{S.ready=true;send({type:'ready'});tryStart();render()});
-  on('del',()=>{S.current.pop();render()});
-  on('sub',()=>{S.pending=S.current.slice();S.current=[];S.turn=false;send({type:'guess',g:S.pending});render()});
+  on('del',()=>{S.current.pop();render()});on('sub',()=>{S.pending=S.current.slice();S.current=[];S.turn=false;send({type:'guess',g:S.pending});render()});
   on('again',()=>{resetGame();S.screen='setup';send({type:'again'});render()});
-  const nm=$('name');if(nm)nm.oninput=()=>S.name=nm.value;
-  const cd=$('cd');if(cd)cd.oninput=()=>S.code=cd.value.trim();
+  const nm=$('name');if(nm)nm.oninput=()=>S.name=nm.value;const cd=$('cd');if(cd)cd.oninput=()=>S.code=cd.value.trim();
   document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const k=b.dataset.s;S.cfg[k]=k==='m'?b.dataset.v:+b.dataset.v;send({type:'cfg',cfg:S.cfg});render()});
   document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{if(S.secret.length<L){S.secret.push(+b.dataset.c);render()}});
   document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{if(S.current.length<L){S.current.push(+b.dataset.g);render()}});
 }
-
-function send(m){ if(dc && dc.readyState === 'open'){ dc.send(JSON.stringify(m)); } }
-
 render();
-async function runDiag(){
-  S.diag='接続診断中…'; render();
-  const rtc = typeof RTCPeerConnection !== 'undefined';
-  let srv='NG';
-  try{
-    const t=performance.now();
-    const c=new AbortController();
-    const to=setTimeout(()=>c.abort(),8000);
-    await fetch('https://ntfy.sh/v1/health',{cache:'no-store',signal:c.signal});
-    clearTimeout(to);
-    srv='OK('+Math.round(performance.now()-t)+'ms)';
-  }catch(_){ }
-  S.diag='診断: WebRTC '+(rtc?'OK':'NG')+' / 仲介サービス '+srv;
-  if(S.screen==='home') render();
-}
-runDiag();
 </script></body></html>
-
